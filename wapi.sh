@@ -1,4 +1,46 @@
 #!/bin/sh -x
+#
+# wapi.sh: Shell functions for WAPI
+#
+# Repository:
+#   https://github.com/yhariguchi-infoblox/wapi.sh/tree/main
+#
+
+#
+# Default authentication info
+#
+__auth=admin:infoblox
+
+#
+# wapi <del|get|put|post> <device> <obj> [...]
+#
+wapi () {
+  if [ $# -lt 3 ]; then
+    echo "Usage: wapi <get|put|post> <device> <obj> [...]" 1>&2
+    return 1
+  fi
+  case $1 in
+    'del') _cmd=DELETE
+           ;;
+    'get') _cmd=GET
+           ;;
+    'post') _cmd=POST
+           ;;
+    'put') _cmd=PUT
+           ;;
+    *) echo "ERROR: ${1}: wrong command." 1>&2
+       return 1
+       ;;
+  esac
+  _dev=$2
+  _obj=$3
+  shift; shift; shift
+
+  curl -s -k1 -u $__auth \
+       -H "content-type:application/json" \
+       -X $_cmd \
+       https://$_dev/wapi/v2.13.7/$_obj $*
+}
 
 #
 # addView <device> <view>
@@ -8,7 +50,7 @@ addView () {
     echo "Usage: addView <device> <view>" 1>&2
     return 1
   fi
-  curl -k1 -u admin:infoblox \
+  curl -s -k1 -u $__auth \
        -H "content-type:application/json" \
        -X POST \
        https://$1/wapi/v2.13.7/view \
@@ -24,7 +66,7 @@ addZone () {
     return 1
   fi
   _serial=`date +%Y%m%d`01
-  curl -k1 -u admin:infoblox \
+  curl -s -k1 -u $__auth \
      -H "content-type:application/json" \
      -X POST \
      https://$1/wapi/v2.13.7/zone_auth \
@@ -57,27 +99,27 @@ addArecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:a \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "ipv4addr": "'$4'",
-            "use_ttl": true,
-            "ttl": '${5}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:a \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "ipv4addr": "'$4'",
+           "use_ttl": true,
+           "ttl": '${5}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:a \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "ipv4addr": "'$4'"
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:a \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "ipv4addr": "'$4'"
+         }'
   fi
 }
 
@@ -90,27 +132,27 @@ addAAAArecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:aaaa \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "ipv6addr": "'$4'",
-            "use_ttl": true,
-            "ttl": '${5}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:aaaa \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "ipv6addr": "'$4'",
+           "use_ttl": true,
+           "ttl": '${5}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:aaaa \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "ipv6addr": "'$4'"
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:aaaa \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "ipv6addr": "'$4'"
+         }'
   fi
 }
 
@@ -126,31 +168,31 @@ addCAArecord () {
     return 1
   fi
   if [ $# -gt 6 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:caa \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "ca_flag": '$4',
-            "ca_tag": "'$5'",
-            "ca_value": "'$6'",
-            "use_ttl": true,
-            "ttl": '${7}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:caa \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "ca_flag": '$4',
+           "ca_tag": "'$5'",
+           "ca_value": "'$6'",
+           "use_ttl": true,
+           "ttl": '${7}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:caa \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "ca_flag": '$4',
-            "ca_tag": "'$5'",
-            "ca_value": "'$6'"
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:caa \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "ca_flag": '$4',
+           "ca_tag": "'$5'",
+           "ca_value": "'$6'"
+         }'
   fi
 }
 
@@ -164,19 +206,19 @@ addCNAMEecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:cname \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "canonical": "'$4'",
-            "use_ttl": true,
-            "ttl": '${5}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:cname \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "canonical": "'$4'",
+           "use_ttl": true,
+           "ttl": '${5}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
+     curl -s -k1 -u $__auth \
           -H "content-type:application/json" \
           -X POST \
           https://$1/wapi/v2.13.7/record:cname \
@@ -198,27 +240,27 @@ addDNAMEecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:dname \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "target": "'$4'",
-            "use_ttl": true,
-            "ttl": '${5}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:dname \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "target": "'$4'",
+           "use_ttl": true,
+           "ttl": '${5}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:dname \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "target": "'$4'"
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:dname \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "target": "'$4'"
+         }'
   fi
 }
 
@@ -231,29 +273,29 @@ addHTTPSrecord () {
     return 1
   fi
   if [ $# -gt 5 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:https \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "target_name": "'$4'",
-            "priority": '${5}',
-            "use_ttl": true,
-            "ttl": '${6}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:https \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "target_name": "'$4'",
+           "priority": '${5}',
+           "use_ttl": true,
+           "ttl": '${6}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:https \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "target_name": "'$4'",
-            "priority": '${5}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:https \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "target_name": "'$4'",
+           "priority": '${5}'
+         }'
   fi
 }
 
@@ -271,27 +313,27 @@ addHOSTrecord () {
     _addr=ipv4addr
   fi
   if [ $# -gt 4 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:host \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "'${_addr}s'": [{"'${_addr}'":"'$4'"}],
-            "use_ttl": true,
-            "ttl": '${5}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:host \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "'${_addr}s'": [{"'${_addr}'":"'$4'"}],
+           "use_ttl": true,
+           "ttl": '${5}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:host \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "'${_addr}s'": [{"'${_addr}'":"'$4'"}]
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:host \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "'${_addr}s'": [{"'${_addr}'":"'$4'"}]
+         }'
   fi
 }
 
@@ -304,29 +346,29 @@ addMXrecord () {
     return 1
   fi
   if [ $# -gt 5 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:mx \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "mail_exchanger": "'$4'",
-            "preference": '$5',
-            "use_ttl": true,
-            "ttl": '${5}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:mx \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "mail_exchanger": "'$4'",
+           "preference": '$5',
+           "use_ttl": true,
+           "ttl": '${5}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:mx \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "mail_exchanger": "'$4'",
-            "preference": '$5'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:mx \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "mail_exchanger": "'$4'",
+           "preference": '$5'
+         }'
   fi
 }
 
@@ -339,31 +381,31 @@ addNAPTRrecord () {
     return 1
   fi
   if [ $# -gt 6 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:naptr \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "replacement": "'$4'",
-            "order": '$5',
-            "preference": '$6',
-            "use_ttl": true,
-            "ttl": '${7}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:naptr \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "replacement": "'$4'",
+           "order": '$5',
+           "preference": '$6',
+           "use_ttl": true,
+           "ttl": '${7}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:naptr \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "replacement": "'$4'",
-            "order": '$5',
-            "preference": '$6'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:naptr \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "replacement": "'$4'",
+           "order": '$5',
+           "preference": '$6'
+         }'
   fi
 }
 
@@ -376,27 +418,27 @@ addPTRrecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:ptr \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "ptrdname": "'$4'",
-            "use_ttl": true,
-            "ttl": '${5}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:ptr \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "ptrdname": "'$4'",
+           "use_ttl": true,
+           "ttl": '${5}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:ptr \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "ptrdname": "'$4'"
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:ptr \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "ptrdname": "'$4'"
+         }'
   fi
 }
 
@@ -410,33 +452,33 @@ addSRVrecord () {
     return 1
   fi
   if [ $# -gt 7 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:srv \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "target": "'$4'",
-            "port": '$5',
-            "priority": '$6',
-            "weight": '$7',
-            "use_ttl": true,
-            "ttl": '${8}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:srv \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "target": "'$4'",
+           "port": '$5',
+           "priority": '$6',
+           "weight": '$7',
+           "use_ttl": true,
+           "ttl": '${8}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:srv \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "target": "'$4'",
-            "port": '$5',
-            "priority": '$6',
-            "weight": '$7'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:srv \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "target": "'$4'",
+           "port": '$5',
+           "priority": '$6',
+           "weight": '$7'
+         }'
   fi
 }
 
@@ -450,29 +492,29 @@ addSVCBrecord () {
     return 1
   fi
   if [ $# -gt 5 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:svcb \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "target_name": "'$4'",
-            "priority": '$5',
-            "use_ttl": true,
-            "ttl": '${6}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:svcb \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "target_name": "'$4'",
+           "priority": '$5',
+           "use_ttl": true,
+           "ttl": '${6}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:svcb \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "target_name": "'$4'",
-            "priority": '$5'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:svcb \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "target_name": "'$4'",
+           "priority": '$5'
+         }'
   fi
 }
 
@@ -489,32 +531,32 @@ addTLSArecord () {
     return 1
   fi
   if [ $# -gt 7 ]; then
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:tlsa \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "certificate_data": "'$4'",
-            "certificate_usage": '$5',
-            "matched_type": '$6',
-            "selector": '$7',
-            "use_ttl": true,
-            "ttl": '${8}'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:tlsa \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "certificate_data": "'$4'",
+           "certificate_usage": '$5',
+           "matched_type": '$6',
+           "selector": '$7',
+           "use_ttl": true,
+           "ttl": '${8}'
+         }'
   else
-     curl -k1 -u admin:infoblox \
-          -H "content-type:application/json" \
-          -X POST \
-          https://$1/wapi/v2.13.7/record:tlsa \
-          -d '{
-            "name": "'$3'",
-            "view": "'$2'",
-            "certificate_data": "'$4'",
-            "certificate_usage": '$5',
-            "matched_type": '$6',
-            "selector": '$7'
-          }'
+    curl -s -k1 -u $__auth \
+         -H "content-type:application/json" \
+         -X POST \
+         https://$1/wapi/v2.13.7/record:tlsa \
+         -d '{
+           "name": "'$3'",
+           "view": "'$2'",
+           "certificate_data": "'$4'",
+           "certificate_usage": '$5',
+           "matched_type": '$6',
+           "selector": '$7'
+         }'
   fi
 }
