@@ -12,6 +12,27 @@
 __auth=admin:infoblox
 
 #
+# list2array <comma-separated-list>
+#
+# This function converts a comma-separated list into a JSON array
+#
+#   e.g. "foo.com, bar.com" -> ["foo.com", "bar.com"]
+#
+list2array () {
+  if [ $# -eq 0 ]; then
+    return 0
+  fi
+
+  local list
+  list='['
+  for s in `echo $1 | sed 's/,/ /g'`
+  do
+    list=${list}\"$s\",\
+  done
+  echo ${list%?}\]
+}
+
+#
 # wapi <del|get|put|post> <device> <obj> [...]
 #
 wapi () {
@@ -558,5 +579,91 @@ addTLSArecord () {
            "matched_type": '$6',
            "selector": '$7'
          }'
+  fi
+}
+
+#
+# updateResolverString [-r <resolvers>] [-s <search_domains>] <device> <ref>
+#
+updateResolverString () {
+  local quit
+  local resolvers
+  local domains
+  local json
+
+  while [ $# -gt 0 ]
+  do
+    case $1 in
+    -h)  quit=1
+         ;;
+    -r) shift
+        resolvers=`list2array $1`
+        resolvers="\"resolvers\": $resolvers"
+        ;;
+    -s) shift
+        domains=`list2array $1`
+        domains="\"search_domains\": $domains"
+        ;;
+    *)  break
+        ;;
+    esac
+    shift
+  done
+  if [ -n "$quit" -o $# -lt 2 ]; then
+    echo "Usage: updateResolverString [-r <resolvers>] [-s <search_domains>] <device> <ref>" 1>&2
+    echo '       format: "1.1.1.1, 2.2.2.2", "foo.com, bar.com"' 1>&2
+    return 1
+  fi
+
+  json='{"dns_resolver_setting": {'
+  if [ -n "${resolvers}" ]; then
+    json="${json}${resolvers}"
+    if [ -n "${domains}" ]; then
+      json="${json}, ${domains}}"
+    else
+      json="${json}}"
+    fi
+    json="${json}}"
+  else
+    if [ -z "${domains}" ]; then
+      echo "WARNING: both resolver and search domain lists are empty" 1>&2
+      return 1
+    fi
+    json="${json}${domains}}}"
+  fi
+  curl -s -k1 -u $__auth \
+       -H "content-type:application/json" \
+       -X PUT \
+       https://$1/wapi/v2.13.7/$2 -d "$json"
+  if [ $? = 0 ]; then
+    echo
+  fi
+}
+
+#
+# getResolverString <device> <grid|member>
+#
+getResolverString () {
+  if [ $# -lt 2 ]; then
+    echo "Usage: addView <device> <grid|member>" 1>&2
+    return 1
+  fi
+
+  local grid
+  case $2 in
+    g*) grid="grid"
+        ;;
+    m*) grid="member"
+        ;;
+    *) echo "ERROR: ${2}: 2nd param must be 'grid' or 'member'" 1>&2
+       return 1
+       ;;
+  esac
+  curl -s -k1 -u $__auth \
+       -H "content-type:application/json" \
+       -X GET \
+       https://$1/wapi/v2.13.7/${grid}\?_return_fields=dns_resolver_setting
+  if [ $? = 0 ]; then
+    echo
   fi
 }
