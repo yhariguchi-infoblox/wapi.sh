@@ -23,6 +23,17 @@ list2array () {
     return 0
   fi
 
+  #
+  # $1 only has white spaces
+  #
+  if echo "$1" | grep '^[ \t]*$' > /dev/null ; then
+    echo \[\"$1\"\]
+    return 0
+  fi
+
+  #
+  # Regular case
+  #
   local list
   list='['
   for s in `echo $1 | sed 's/,/ /g'`
