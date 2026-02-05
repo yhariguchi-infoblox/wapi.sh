@@ -594,6 +594,59 @@ addTLSArecord () {
 }
 
 #
+# deleteResolverString [-r] [-s] <device> <ref>
+#
+deleteResolverString () {
+  local quit
+  local resolvers
+  local domains
+  local json
+
+  while [ $# -gt 0 ]
+  do
+    case $1 in
+    -h)  quit=1
+         ;;
+    -r) resolvers=1
+        ;;
+    -s) domains=1
+        ;;
+    *)  break
+        ;;
+    esac
+    shift
+  done
+  if [ -n "$quit" -o $# -lt 2 ]; then
+    echo "Usage: deleteResolverString [-r] [-s] <device> <ref>" 1>&2
+    return 1
+  fi
+
+  json='{"dns_resolver_setting": {'
+  if [ -n "${resolvers}" ]; then
+    json="${json}\"resolvers\": []"
+    if [ -n "${domains}" ]; then
+      json="${json}, \"search_domains\": []}"
+    else
+      json="${json}}"
+    fi
+    json="${json}}"
+  else
+    if [ -z "${domains}" ]; then
+      echo "WARNING: both resolver and search domain lists are empty" 1>&2
+      return 1
+    fi
+    json="${json}\"search_domains\": []}}"
+  fi
+  curl -s -k1 -u $__auth \
+       -H "content-type:application/json" \
+       -X PUT \
+       https://$1/wapi/v2.13.7/$2 -d "$json"
+  if [ $? = 0 ]; then
+    echo
+  fi
+}
+
+#
 # updateResolverString [-r <resolvers>] [-s <search_domains>] <device> <ref>
 #
 updateResolverString () {
@@ -656,7 +709,7 @@ updateResolverString () {
 #
 getResolverString () {
   if [ $# -lt 2 ]; then
-    echo "Usage: addView <device> <grid|member>" 1>&2
+    echo "Usage: getResolverString <device> <grid|member>" 1>&2
     return 1
   fi
 
