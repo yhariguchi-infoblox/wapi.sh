@@ -12,6 +12,75 @@
 __auth=admin:infoblox
 
 #
+# pl2mask <prefix-length>
+#
+# This function converts an IPv4 prefix length to a mask
+# and output it to stdout.
+#
+pl2mask () {
+  local rv
+
+  rv=0
+  case $1 in
+    8) echo "255.0.0.0"
+       ;;
+    9) echo "255.128.0.0"
+       ;;
+    10) echo "255.192.0.0"
+       ;;
+    11) echo "255.224.0.0"
+       ;;
+    12) echo "255.240.0.0"
+       ;;
+    13) echo "255.248.0.0"
+       ;;
+    14) echo "255.252.0.0"
+       ;;
+    15) echo "255.254.0.0"
+       ;;
+    16) echo "255.255.0.0"
+       ;;
+    17) echo "255.255.128.0"
+       ;;
+    18) echo "255.255.192.0"
+       ;;
+    19) echo "255.255.224.0"
+       ;;
+    20) echo "255.255.240.0"
+       ;;
+    21) echo "255.255.248.0"
+       ;;
+    22) echo "255.255.252.0"
+       ;;
+    23) echo "255.255.254.0"
+       ;;
+    24) echo "255.255.255.0"
+       ;;
+    25) echo "255.255.255.128"
+       ;;
+    26) echo "255.255.255.192"
+       ;;
+    27) echo "255.255.255.224"
+       ;;
+    28) echo "255.255.255.240"
+       ;;
+    29) echo "255.255.255.248"
+       ;;
+    30) echo "255.255.255.252"
+       ;;
+    31) echo "255.255.255.254"
+       ;;
+    32) echo "255.255.255.255"
+       ;;
+    *) echo ""
+       rv=1
+       ;;
+  esac
+
+  return $rv
+}
+
+#
 # list2array <comma-separated-list>
 #
 # This function converts a comma-separated list into a JSON array
@@ -590,6 +659,85 @@ addTLSArecord () {
            "matched_type": '$6',
            "selector": '$7'
          }'
+  fi
+}
+
+#
+# gridJoin <mbr-ip> <grid-name> <grid-vip> <secret>
+#
+gridJoin () {
+  local json
+
+  if [ $# -lt 4 ]; then
+    echo "Usage: gridJoin <mbr-ip> <grid-name> <grid-ip> <secret>" 1>&2
+    return 1
+  fi
+
+  json='{
+  "grid_name": "'$2'",
+  "master": "'$3'",
+  "shared_secret": "'$4'"
+}'
+
+  curl -s -k1 -u $__auth \
+       -H "content-type:application/json" \
+       -X POST \
+       https://$1/wapi/v2.13.7/grid\?_function=join\&_return_as_object=1 -d "$json"
+  if [ $? = 0 ]; then
+    echo
+  fi
+  
+}
+
+#
+# createMember [-v] <gm-ip> <mbr-fqdn> <mbr-ip-prefix> <gw>
+#
+createMember () {
+  local ipa
+  local json
+  local mask
+  local platform
+  local quit
+
+  local platform=NIOS
+  while [ $# -gt 0 ]
+  do
+    case $1 in
+    -h)  quit=1
+         ;;
+    -v) platform=VNIOS
+        ;;
+    *)  break
+        ;;
+    esac
+    shift
+  done
+  if [ -n "$quit" -o $# -lt 4 ]; then
+    echo "Usage: createMember [-v] <gm-ip> <mbr-fqdn> <mbr-ip-prefix> <gw>" 1>&2
+    return 1
+  fi
+
+  ipa=`dirname $3`
+  mask=`basename $3`
+  mask=`pl2mask $mask`
+  if [ $? != 0 ]; then
+    return 1
+  fi
+  json='{
+  "host_name": "'$2'",
+  "platform": "'$platform'",
+  "vip_setting": {
+    "address": "'$ipa'",
+    "subnet_mask": "'$mask'",
+    "gateway": "'$4'"
+  }
+}'
+  curl -s -k1 -u $__auth \
+       -H "content-type:application/json" \
+       -X POST \
+       https://$1/wapi/v2.13.7/member -d "$json"
+  if [ $? = 0 ]; then
+    echo
   fi
 }
 
