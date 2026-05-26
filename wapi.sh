@@ -12,72 +12,100 @@
 __auth=admin:infoblox
 
 #
-# pl2mask <prefix-length>
+# pl2mask <IPv4-prefix-length>
 #
-# This function converts an IPv4 prefix length to a mask
-# and output it to stdout.
+# This function converts an IPv4 prefix length to a netmask and
+# outputs it to stdout.
 #
 pl2mask () {
-  local rv
+  local _head
+  local _max
+  local _n
+  local _pl
+  local _tail
 
-  rv=0
-  case $1 in
-    8) echo "255.0.0.0"
-       ;;
-    9) echo "255.128.0.0"
-       ;;
-    10) echo "255.192.0.0"
-       ;;
-    11) echo "255.224.0.0"
-       ;;
-    12) echo "255.240.0.0"
-       ;;
-    13) echo "255.248.0.0"
-       ;;
-    14) echo "255.252.0.0"
-       ;;
-    15) echo "255.254.0.0"
-       ;;
-    16) echo "255.255.0.0"
-       ;;
-    17) echo "255.255.128.0"
-       ;;
-    18) echo "255.255.192.0"
-       ;;
-    19) echo "255.255.224.0"
-       ;;
-    20) echo "255.255.240.0"
-       ;;
-    21) echo "255.255.248.0"
-       ;;
-    22) echo "255.255.252.0"
-       ;;
-    23) echo "255.255.254.0"
-       ;;
-    24) echo "255.255.255.0"
-       ;;
-    25) echo "255.255.255.128"
-       ;;
-    26) echo "255.255.255.192"
-       ;;
-    27) echo "255.255.255.224"
-       ;;
-    28) echo "255.255.255.240"
-       ;;
-    29) echo "255.255.255.248"
-       ;;
-    30) echo "255.255.255.252"
-       ;;
-    31) echo "255.255.255.254"
-       ;;
-    32) echo "255.255.255.255"
-       ;;
-    *) echo ""
-       rv=1
-       ;;
-  esac
+  if [ $# -lt 1 ]; then
+    echo 'Usage: pl2mask <prefix-length>' 1>&2
+    return 1
+  fi
+  _pl=$1
+  if [ $_pl -gt 32 ]; then
+    return 1
+  fi
+  if [ $_pl -gt 24 ]; then
+    _max=32
+    _head='255.255.255.'
+  elif [ $_pl -gt 16 ]; then
+    _max=24
+    _head='255.255.'
+    _tail='.0'
+  elif [ $_pl -gt 8 ]; then
+    _max=16
+    _head='255.'
+    _tail='.0.0'
+  else
+    _max=8
+    _tail='255.255.0'
+  fi
+  _n=`echo "256 - 2^(${_max}-${_pl})" | bc`
+  if [ $? != 0 ]; then
+    return 1
+  fi
+  echo ${_head}${_n}${_tail}
+}
 
-  return $rv
+#
+# mask2pl <IPv4-netmask>
+#
+# This function converts a netmask to an IPv4 prefix length and
+# outputs it to stdout.
+#
+mask2pl () {
+  if [ $# -lt 1 ]; then
+    echo 'Usage: mask2pl <netmask>' 1>&2
+    return 1
+  fi
+  echo $1 | awk -F'.' '{ \
+    if (NF != 4) { \
+      print "ERROR: wrong input:" $0 | "cat 1>&2"; exit 1\
+    } else {\
+      input = $0; \
+      if ($1 == 255 && $2 == 255 && $3 == 255) {\
+        a = 24; b = $4\
+      } else if ($1 == 255 && $2 == 255) {\
+        a = 16; b = $3\
+      } else if ($1 == 255) {\
+        a = 8; b = $2\
+      } else {\
+        a = 0; b = $1\
+      }\
+    }\
+  } END { \
+    if (NR > 1) {\
+      print "ERROR: too many lines" | "cat 1>&2"; exit 1\
+    }\
+    if (b == 255) {\
+      print a + 8\
+    } else if (b == 254) {\
+      print a + 7\
+    } else if (b == 252) {\
+      print a + 6\
+    } else if (b == 248) {\
+      print a + 5\
+    } else if (b == 240) {\
+      print a + 4\
+    } else if (b == 224) {\
+      print a + 3\
+    } else if (b == 192) {\
+      print a + 2\
+    } else if (b == 128) {\
+      print a + 1\
+    } else if (b == 0) {\
+      print a\
+    } else {\
+      print "ERROR: wrong input: " input | "cat 1>&2" ; exit 1\
+    }\
+  }'
 }
 
 #
@@ -107,7 +135,7 @@ list2array () {
   list='['
   for s in `echo $1 | sed 's/,/ /g'`
   do
-    list=${list}\"$s\",\
+    list=${list}\"$s\",
   done
   echo ${list%?}\]
 }
@@ -116,6 +144,9 @@ list2array () {
 # wapi <del|get|put|post> <device> <obj> [...]
 #
 wapi () {
+  local _dev
+  local _obj
+
   if [ $# -lt 3 ]; then
     echo "Usage: wapi <get|put|post> <device> <obj> [...]" 1>&2
     return 1
@@ -162,6 +193,8 @@ addView () {
 # addZone <device> <view> <zone>
 #
 addZone () {
+  local _serial
+
   if [ $# -lt 3 ]; then
     echo "Usage: addZone <device> <view> <zone>" 1>&2
     return 1
@@ -404,6 +437,8 @@ addHTTPSrecord () {
 # addHOSTrecord <device> <view> <fqdn> <ipaddr> [ttl]
 #
 addHOSTrecord () {
+  local _addr
+
   if [ $# -lt 4 ]; then
     echo "Usage: addHTTPSrecord <device> <view> <fqdn> <ipaddr> [ttl]" 1>&2
     return 1
@@ -877,5 +912,24 @@ getResolverString () {
        https://$1/wapi/v2.13.7/${grid}\?_return_fields=dns_resolver_setting
   if [ $? = 0 ]; then
     echo
+    return 1
+  fi
+}
+
+#
+# getGrid <device>
+#
+getGrid () {
+  if [ $# -lt 1 ]; then
+    echo "Usage: getGrid <device>" 1>&2
+    return 1
+  fi
+  curl -s -k1 -u $__auth \
+       -H "content-type:application/json" \
+       -X GET \
+       https://$1/wapi/v2.13.7/grid
+  if [ $? = 0 ]; then
+    echo
+    return 1
   fi
 }
