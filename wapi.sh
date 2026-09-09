@@ -36,6 +36,17 @@ view,\
 zone\&_inheritance=True
 
 #
+#
+#
+setWapiAuth () {
+  if [ $# -lt 2 ]; then
+    echo 'Usage: setWapiAuth <username> <password>' 1>&2
+    return 1
+  fi
+  __auth="${1}:${2}"
+}
+
+#
 # pl2mask <IPv4-prefix-length>
 #
 # This function converts an IPv4 prefix length to a netmask and
