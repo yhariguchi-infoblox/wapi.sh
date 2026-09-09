@@ -11,6 +11,30 @@
 #
 __auth=admin:infoblox
 
+__ret_fld=_return_fields=\
+aws_rte53_record_info,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+discovered_data,\
+dns_name,\
+extattrs,\
+forbid_reclamation,\
+ipv4addr,\
+last_queried,\
+ms_ad_user_data,\
+name,\
+reclaimable,\
+shared_record_group,\
+ttl,\
+use_ttl,\
+view,\
+zone\&_inheritance=True
+
 #
 # pl2mask <IPv4-prefix-length>
 #
@@ -168,10 +192,11 @@ wapi () {
   _obj=$3
   shift; shift; shift
 
-  curl -s -k1 -u $__auth \
+  set -x
+  curl -s -k1 -u "$__auth" \
        -H "content-type:application/json" \
        -X $_cmd \
-       https://$_dev/wapi/v2.13.7/$_obj $*
+       https://$_dev/wapi/v2.13.7/$_obj "$@"
 }
 
 #
@@ -232,6 +257,7 @@ addArecord () {
     echo "Usage: addArecord <device> <view> <fqdn> <ipv4a> [ttl]" 1>&2
     return 1
   fi
+  set -x
   if [ $# -gt 4 ]; then
     curl -s -k1 -u $__auth \
          -H "content-type:application/json" \
@@ -931,5 +957,23 @@ getGrid () {
   if [ $? = 0 ]; then
     echo
     return 1
+  fi
+}
+
+#
+# getArecord <device> <name>
+# getArecord <device> <ref>
+#
+getArecord () {
+  local _rf
+
+  if [ $# -lt 2 ]; then
+    echo "Usage: getArecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  if echo $2 | grep '^record:a' > /dev/null ; then
+    wapi get "$@"\?"$__ret_fld"
+  else
+    wapi get "$1" "record:a?name=${2}"\?"$__ret_fld"
   fi
 }
