@@ -24,7 +24,6 @@ discovered_data,\
 dns_name,\
 extattrs,\
 forbid_reclamation,\
-ipv4addr,\
 last_queried,\
 ms_ad_user_data,\
 name,\
@@ -173,6 +172,38 @@ list2array () {
     list=${list}\"$s\",
   done
   echo ${list%?}\]
+}
+
+#
+# appendRetField <field> [string]
+#
+#
+appendRetField () {
+  case $# in
+    0) echo $__ret_fld
+       return 1
+       ;;
+    1) echo $__ret_fld | sed 's/&_inheritance=True$/,'"$1"'&_inheritance=True/'
+       ;;
+    *) echo $2 | sed 's/&_inheritance=True$/,'"$1"'&_inheritance=True/'
+       ;;
+  esac
+}
+
+#
+# appendRetField <field> <string>
+#
+#
+deleteRetField () {
+  case $# in
+    0) echo $__ret_fld
+       return 1
+       ;;
+    1) echo $__ret_fld | sed "s/${1},//"
+       ;;
+    *) echo $2 | sed "s/${1},//"
+       ;;
+  esac
 }
 
 #
@@ -972,19 +1003,96 @@ getGrid () {
 }
 
 #
+# getResourceRecord <device> <resource> [<name> | <ref>]
+#
+getResourceRecord () {
+  local _rf
+
+  if [ $# -lt 2 ]; then
+    echo 'Usage: getResourceRecord <device> <resource> [<name | ref>]' 1>&2
+    echo
+    echo '  RRs: a aaaa caa cname dname https host mx naptr ptr srv svcb tlsa' 1>&2
+    return 1
+  fi
+  case "$2" in
+    a) _rf=`appendRetField ipv4addr`
+       ;;
+    aaaa) _rf=`appendRetField ipv6addr`
+	  ;;
+    cname) _rf=`deleteRetField discovered_data`
+	   _rf=`deleteRetField ms_ad_user_data $_rf`
+	   ;;
+    *) ;;
+  esac
+  if [ $# -lt 3 ]; then
+    wapi get "$1" 'record:'"${2}?_max_results=1000000"
+  elif echo $3 | grep "^record:${2}" > /dev/null ; then
+    wapi get "$1" "${3}?$_rf"
+  else
+    wapi get "$1" "record:${2}?name=${3}"\&"$_rf"
+  fi
+}
+
+#
+# getArecord <device>
 # getArecord <device> <name>
 # getArecord <device> <ref>
 #
 getArecord () {
-  local _rf
+  local _dev
 
-  if [ $# -lt 2 ]; then
+  if [ $# -lt 1 ]; then
     echo "Usage: getArecord <device> <name | ref>" 1>&2
     return 1
   fi
-  if echo $2 | grep '^record:a' > /dev/null ; then
-    wapi get "$@"\?"$__ret_fld"
-  else
-    wapi get "$1" "record:a?name=${2}"\?"$__ret_fld"
+  _dev="$1"; shift
+  getResourceRecord $_dev a "$@"
+}
+
+#
+# getAAAArecord <device>
+# getAAAArecord <device> <name>
+# getAAAArecord <device> <ref>
+#
+getAAAArecord () {
+  local _dev
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getAAAArecord <device> <name | ref>" 1>&2
+    return 1
   fi
+  _dev="$1"; shift
+  getResourceRecord $_dev aaaa "$@"
+}
+
+#
+# getCAArecord <device>
+# getCAArecord <device> <name>
+# getCAArecord <device> <ref>
+#
+getCAArecord () {
+  local _dev
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getCAArecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _dev="$1"; shift
+  getResourceRecord $_dev caa "$@"
+}
+
+#
+# getDNAMErecord <device>
+# getDNAMErecord <device> <name>
+# getDNAMErecord <device> <ref>
+#
+getDNAMErecord () {
+  local _dev
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getDNAMErecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _dev="$1"; shift
+  getResourceRecord $_dev dname "$@"
 }
