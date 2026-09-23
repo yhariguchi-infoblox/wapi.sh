@@ -9,7 +9,7 @@
 #
 # Default authentication info
 #
-__auth=admin:infoblox
+__wapi_auth=admin:infoblox
 
 __ret_fld=_return_fields=\
 aws_rte53_record_info,\
@@ -34,15 +34,20 @@ use_ttl,\
 view,\
 zone\&_inheritance=True
 
+
 #
-#
+# setWapiAuth [<username> <password>]
 #
 setWapiAuth () {
-  if [ $# -lt 2 ]; then
-    echo 'Usage: setWapiAuth <username> <password>' 1>&2
+  if [ $# -lt 1 ]; then
+    __wapi_auth=admin:infoblox
+    
+  elif [ $# -lt 2 ]; then
+    echo 'Usage: setWapiAuth [<username> <password>]' 1>&2
     return 1
+  else
+    __wapi_auth="${1}:${2}"
   fi
-  __auth="${1}:${2}"
 }
 
 #
@@ -175,35 +180,14 @@ list2array () {
 }
 
 #
-# appendRetField <field> [string]
+# mkRetField <field>
 #
 #
-appendRetField () {
-  case $# in
-    0) echo $__ret_fld
-       return 1
-       ;;
-    1) echo $__ret_fld | sed 's/&_inheritance=True$/,'"$1"'&_inheritance=True/'
-       ;;
-    *) echo $2 | sed 's/&_inheritance=True$/,'"$1"'&_inheritance=True/'
-       ;;
-  esac
-}
-
-#
-# appendRetField <field> <string>
-#
-#
-deleteRetField () {
-  case $# in
-    0) echo $__ret_fld
-       return 1
-       ;;
-    1) echo $__ret_fld | sed "s/${1},//"
-       ;;
-    *) echo $2 | sed "s/${1},//"
-       ;;
-  esac
+mkRetField () {
+  if [ $# -lt 1 ]; then
+    return 1
+  fi
+  echo "_return_fields=${1}&_inheritance=True"
 }
 
 #
@@ -235,7 +219,7 @@ wapi () {
   shift; shift; shift
 
   set -x
-  curl -s -k1 -u "$__auth" \
+  curl -s -k1 -u "$__wapi_auth" \
        -H "content-type:application/json" \
        -X $_cmd \
        https://$_dev/wapi/v2.13.7/$_obj "$@"
@@ -249,7 +233,7 @@ addView () {
     echo "Usage: addView <device> <view>" 1>&2
     return 1
   fi
-  curl -s -k1 -u $__auth \
+  curl -s -k1 -u $__wapi_auth \
        -H "content-type:application/json" \
        -X POST \
        https://$1/wapi/v2.13.7/view \
@@ -267,7 +251,7 @@ addZone () {
     return 1
   fi
   _serial=`date +%Y%m%d`01
-  curl -s -k1 -u $__auth \
+  curl -s -k1 -u $__wapi_auth \
      -H "content-type:application/json" \
      -X POST \
      https://$1/wapi/v2.13.7/zone_auth \
@@ -301,7 +285,7 @@ addArecord () {
   fi
   set -x
   if [ $# -gt 4 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:a \
@@ -313,7 +297,7 @@ addArecord () {
            "ttl": '${5}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:a \
@@ -334,7 +318,7 @@ addAAAArecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:aaaa \
@@ -346,7 +330,7 @@ addAAAArecord () {
            "ttl": '${5}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:aaaa \
@@ -370,7 +354,7 @@ addCAArecord () {
     return 1
   fi
   if [ $# -gt 6 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:caa \
@@ -384,7 +368,7 @@ addCAArecord () {
            "ttl": '${7}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:caa \
@@ -408,7 +392,7 @@ addCNAMEecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:cname \
@@ -420,7 +404,7 @@ addCNAMEecord () {
            "ttl": '${5}'
          }'
   else
-     curl -s -k1 -u $__auth \
+     curl -s -k1 -u $__wapi_auth \
           -H "content-type:application/json" \
           -X POST \
           https://$1/wapi/v2.13.7/record:cname \
@@ -442,7 +426,7 @@ addDNAMEecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:dname \
@@ -454,7 +438,7 @@ addDNAMEecord () {
            "ttl": '${5}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:dname \
@@ -475,7 +459,7 @@ addHTTPSrecord () {
     return 1
   fi
   if [ $# -gt 5 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:https \
@@ -488,7 +472,7 @@ addHTTPSrecord () {
            "ttl": '${6}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:https \
@@ -517,7 +501,7 @@ addHOSTrecord () {
     _addr=ipv4addr
   fi
   if [ $# -gt 4 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:host \
@@ -529,7 +513,7 @@ addHOSTrecord () {
            "ttl": '${5}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:host \
@@ -550,7 +534,7 @@ addMXrecord () {
     return 1
   fi
   if [ $# -gt 5 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:mx \
@@ -563,7 +547,7 @@ addMXrecord () {
            "ttl": '${5}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:mx \
@@ -585,7 +569,7 @@ addNAPTRrecord () {
     return 1
   fi
   if [ $# -gt 6 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:naptr \
@@ -599,7 +583,7 @@ addNAPTRrecord () {
            "ttl": '${7}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:naptr \
@@ -622,7 +606,7 @@ addPTRrecord () {
     return 1
   fi
   if [ $# -gt 4 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:ptr \
@@ -634,7 +618,7 @@ addPTRrecord () {
            "ttl": '${5}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:ptr \
@@ -656,7 +640,7 @@ addSRVrecord () {
     return 1
   fi
   if [ $# -gt 7 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:srv \
@@ -671,7 +655,7 @@ addSRVrecord () {
            "ttl": '${8}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:srv \
@@ -696,7 +680,7 @@ addSVCBrecord () {
     return 1
   fi
   if [ $# -gt 5 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:svcb \
@@ -709,7 +693,7 @@ addSVCBrecord () {
            "ttl": '${6}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:svcb \
@@ -735,7 +719,7 @@ addTLSArecord () {
     return 1
   fi
   if [ $# -gt 7 ]; then
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:tlsa \
@@ -750,7 +734,7 @@ addTLSArecord () {
            "ttl": '${8}'
          }'
   else
-    curl -s -k1 -u $__auth \
+    curl -s -k1 -u $__wapi_auth \
          -H "content-type:application/json" \
          -X POST \
          https://$1/wapi/v2.13.7/record:tlsa \
@@ -782,7 +766,7 @@ gridJoin () {
   "shared_secret": "'$4'"
 }'
 
-  curl -s -k1 -u $__auth \
+  curl -s -k1 -u $__wapi_auth \
        -H "content-type:application/json" \
        -X POST \
        https://$1/wapi/v2.13.7/grid\?_function=join\&_return_as_object=1 -d "$json"
@@ -835,7 +819,7 @@ createMember () {
     "gateway": "'$4'"
   }
 }'
-  curl -s -k1 -u $__auth \
+  curl -s -k1 -u $__wapi_auth \
        -H "content-type:application/json" \
        -X POST \
        https://$1/wapi/v2.13.7/member -d "$json"
@@ -888,7 +872,7 @@ deleteResolverString () {
     fi
     json="${json}\"search_domains\": []}}"
   fi
-  curl -s -k1 -u $__auth \
+  curl -s -k1 -u $__wapi_auth \
        -H "content-type:application/json" \
        -X PUT \
        https://$1/wapi/v2.13.7/$2 -d "$json"
@@ -946,7 +930,7 @@ updateResolverString () {
     fi
     json="${json}${domains}}}"
   fi
-  curl -s -k1 -u $__auth \
+  curl -s -k1 -u $__wapi_auth \
        -H "content-type:application/json" \
        -X PUT \
        https://$1/wapi/v2.13.7/$2 -d "$json"
@@ -974,7 +958,7 @@ getResolverString () {
        return 1
        ;;
   esac
-  curl -s -k1 -u $__auth \
+  curl -s -k1 -u $__wapi_auth \
        -H "content-type:application/json" \
        -X GET \
        https://$1/wapi/v2.13.7/${grid}\?_return_fields=dns_resolver_setting
@@ -992,7 +976,7 @@ getGrid () {
     echo "Usage: getGrid <device>" 1>&2
     return 1
   fi
-  curl -s -k1 -u $__auth \
+  curl -s -k1 -u $__wapi_auth \
        -H "content-type:application/json" \
        -X GET \
        https://$1/wapi/v2.13.7/grid
@@ -1003,33 +987,25 @@ getGrid () {
 }
 
 #
-# getResourceRecord <device> <resource> [<name> | <ref>]
+# getResourceRecord <device> <resource> <flds> [<name> | <ref>]
 #
 getResourceRecord () {
   local _rf
 
-  if [ $# -lt 2 ]; then
-    echo 'Usage: getResourceRecord <device> <resource> [<name | ref>]' 1>&2
+  if [ $# -lt 3 ]; then
+    echo 'Usage: getResourceRecord <device> <resource> <flds> [<name | <ref>]' 1>&2
     echo
     echo '  RRs: a aaaa caa cname dname https host mx naptr ptr srv svcb tlsa' 1>&2
     return 1
   fi
-  case "$2" in
-    a) _rf=`appendRetField ipv4addr`
-       ;;
-    aaaa) _rf=`appendRetField ipv6addr`
-	  ;;
-    cname) _rf=`deleteRetField discovered_data`
-	   _rf=`deleteRetField ms_ad_user_data $_rf`
-	   ;;
-    *) ;;
-  esac
-  if [ $# -lt 3 ]; then
+  if [ $# -lt 4 ]; then
     wapi get "$1" 'record:'"${2}?_max_results=1000000"
-  elif echo $3 | grep "^record:${2}" > /dev/null ; then
-    wapi get "$1" "${3}?$_rf"
+  elif echo $4 | grep "^record:${2}" > /dev/null ; then
+    wapi get "$1" "${4}?${3}"
+  elif [ $3 = "NONE" ]; then
+    wapi get "$1" "record:${2}?name=${4}"
   else
-    wapi get "$1" "record:${2}?name=${3}"\&"$_rf"
+    wapi get "$1" "record:${2}?name=${4}"\&"${3}"
   fi
 }
 
@@ -1040,13 +1016,38 @@ getResourceRecord () {
 #
 getArecord () {
   local _dev
+  local _rf
 
   if [ $# -lt 1 ]; then
-    echo "Usage: getArecord <device> <name | ref>" 1>&2
+    echo "Usage: getArecord <device> [<name | ref>]" 1>&2
     return 1
   fi
+  _rf=\
+aws_rte53_record_info,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+discovered_data,\
+dns_name,\
+extattrs,\
+forbid_reclamation,\
+ipv4addr,\
+last_queried,\
+ms_ad_user_data,\
+name,\
+reclaimable,\
+shared_record_group,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
   _dev="$1"; shift
-  getResourceRecord $_dev a "$@"
+  getResourceRecord $_dev a $_rf "$@"
 }
 
 #
@@ -1056,13 +1057,38 @@ getArecord () {
 #
 getAAAArecord () {
   local _dev
+  local _rf
 
   if [ $# -lt 1 ]; then
-    echo "Usage: getAAAArecord <device> <name | ref>" 1>&2
+    echo "Usage: getAAAArecord <device> [<name | ref>]" 1>&2
     return 1
   fi
+  _rf=\
+aws_rte53_record_info,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+discovered_data,\
+dns_name,\
+extattrs,\
+forbid_reclamation,\
+ipv6addr,\
+last_queried,\
+ms_ad_user_data,\
+name,\
+reclaimable,\
+shared_record_group,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
   _dev="$1"; shift
-  getResourceRecord $_dev aaaa "$@"
+  getResourceRecord $_dev aaaa $_rf "$@"
 }
 
 #
@@ -1072,13 +1098,76 @@ getAAAArecord () {
 #
 getCAArecord () {
   local _dev
+  local _rf
 
   if [ $# -lt 1 ]; then
-    echo "Usage: getCAArecord <device> <name | ref>" 1>&2
+    echo "Usage: getCAArecord <device> [<name | ref>]" 1>&2
     return 1
   fi
+  _rf=\
+ca_flag,\
+ca_tag,\
+ca_value,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+dns_name,\
+extattrs,\
+forbid_reclamation,\
+last_queried,\
+name,\
+reclaimable,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
   _dev="$1"; shift
-  getResourceRecord $_dev caa "$@"
+  getResourceRecord $_dev caa $_rf "$@"
+}
+
+#
+# getCNAMErecord <device>
+# getCNAMErecord <device> <name>
+# getCNAMErecord <device> <ref>
+#
+getCNAMErecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getDNAMErecord <device> [<name | ref>]" 1>&2
+    return 1
+  fi
+  _rf=\
+aws_rte53_record_info,\
+canonical,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+dns_canonical,\
+dns_name,\
+extattrs,\
+forbid_reclamation,\
+last_queried,\
+name,\
+reclaimable,\
+shared_record_group,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
+  _dev="$1"; shift
+  getResourceRecord $_dev cname $_rf "$@"
 }
 
 #
@@ -1088,11 +1177,335 @@ getCAArecord () {
 #
 getDNAMErecord () {
   local _dev
+  local _rf
 
   if [ $# -lt 1 ]; then
     echo "Usage: getDNAMErecord <device> <name | ref>" 1>&2
     return 1
   fi
+  _rf=\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+dns_name,\
+dns_target,\
+extattrs,\
+forbid_reclamation,\
+last_queried,\
+name,\
+reclaimable,\
+shared_record_group,\
+target,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
   _dev="$1"; shift
-  getResourceRecord $_dev dname "$@"
+  getResourceRecord $_dev dname $_rf "$@"
 }
+
+#
+# getHTTPSrecord <device>
+# getHTTPSrecord <device> <name>
+# getHTTPSrecord <device> <ref>
+#
+getHTTPSrecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getHTTPSrecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _rf=\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+dns_name,\
+extattrs,\
+forbid_reclamation,\
+last_queried,\
+name,\
+reclaimable,\
+shared_record_group,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
+  _dev="$1"; shift
+  getResourceRecord $_dev https $_rf "$@"
+}
+
+#
+# getHOSTrecord <device>
+# getHOSTrecord <device> <name>
+# getHOSTrecord <device> <ref>
+#
+getHOSTrecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getHOSTrecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _rf=NONE
+  _dev="$1"; shift
+  getResourceRecord $_dev host $_rf "$@"
+}
+
+#
+# getMXrecord <device>
+# getMXrecord <device> <name>
+# getMXrecord <device> <ref>
+#
+getMXrecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getMXrecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _rf=\
+aws_rte53_record_info,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+dns_mail_exchanger,\
+dns_name,\
+extattrs,\
+forbid_reclamation,\
+last_queried,\
+mail_exchanger,\
+name,\
+preference,\
+reclaimable,\
+shared_record_group,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
+  _dev="$1"; shift
+  getResourceRecord $_dev mx $_rf "$@"
+}
+
+#
+# getNAPTRrecord <device>
+# getNAPTRrecord <device> <name>
+# getNAPTRrecord <device> <ref>
+#
+getNAPTRrecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getNAPTRrecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _rf=\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+dns_name,\
+dns_replacement,\
+extattrs,\
+flags,\
+forbid_reclamation,\
+last_queried,\
+name,\
+order,\
+preference,\
+reclaimable,\
+regexp,\
+replacement,\
+services,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
+  _dev="$1"; shift
+  getResourceRecord $_dev naptr $_rf "$@"
+}
+
+#
+# getPTRrecord <device>
+# getPTRrecord <device> <name>
+# getPTRrecord <device> <ref>
+#
+getPTRrecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getPTRrecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _rf=\
+aws_rte53_record_info,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+discovered_data,\
+dns_name,\
+dns_ptrdname,\
+extattrs,\
+forbid_reclamation,\
+ipv4addr,\
+ipv6addr,\
+last_queried,\
+ms_ad_user_data,\
+name,\
+ptrdname,\
+reclaimable,\
+shared_record_group,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
+  _dev="$1"; shift
+  getResourceRecord $_dev ptr $_rf "$@"
+}
+
+#
+# getSRVrecord <device>
+# getSRVrecord <device> <name>
+# getSRVrecord <device> <ref>
+#
+getSRVrecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getSRVrecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _rf=\
+aws_rte53_record_info,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+dns_name,\
+dns_target,\
+extattrs,\
+forbid_reclamation,\
+last_queried,\
+name,\
+port,\
+priority,\
+reclaimable,\
+shared_record_group,\
+target,\
+ttl,\
+use_ttl,\
+view,\
+weight,\
+zone
+  _rf=`mkRetField $_rf`
+  _dev="$1"; shift
+  getResourceRecord $_dev srv $_rf "$@"
+}
+
+#
+# getSVCBrecord <device>
+# getSVCBrecord <device> <name>
+# getSVCBrecord <device> <ref>
+#
+getSVCBrecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getSVCBrecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _rf=\
+aws_rte53_record_info,\
+cloud_info,\
+comment,\
+creation_time,\
+creator,\
+ddns_principal,\
+ddns_protected,\
+disable,\
+extattrs,\
+forbid_reclamation,\
+last_queried,\
+name,\
+priority,\
+reclaimable,\
+svc_parameters,\
+target_name,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
+  _dev="$1"; shift
+  getResourceRecord $_dev svcb $_rf "$@"
+}
+
+#
+# getTLSArecord <device>
+# getTLSArecord <device> <name>
+# getTLSArecord <device> <ref>
+#
+getTLSArecord () {
+  local _dev
+  local _rf
+
+  if [ $# -lt 1 ]; then
+    echo "Usage: getTLSArecord <device> <name | ref>" 1>&2
+    return 1
+  fi
+  _rf=\
+certificate_data,\
+certificate_usage,\
+cloud_info,\
+comment,\
+creator,\
+disable,\
+dns_name,\
+extattrs,\
+last_queried,\
+matched_type,\
+name,\
+selector,\
+ttl,\
+use_ttl,\
+view,\
+zone
+  _rf=`mkRetField $_rf`
+  _dev="$1"; shift
+  getResourceRecord $_dev tlsa $_rf "$@"
+}
+
