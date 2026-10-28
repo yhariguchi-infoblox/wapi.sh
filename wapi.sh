@@ -36,6 +36,14 @@ zone\&_inheritance=True
 
 
 #
+# lsWAPIcmds: list WAPI related shell functions
+#
+#
+lsWAPIcmds () {
+  grep '^[a-zA-Z0-9_].* (' wapi.sh | sed 's/ (.*$//'
+}
+
+#
 # setWapiAuth [<username> <password>]
 #
 setWapiAuth () {
@@ -1509,3 +1517,94 @@ zone
   getResourceRecord $_dev tlsa $_rf "$@"
 }
 
+#
+# getMembers <device>
+#
+getMembers () {
+  if [ $# -lt 1 ]; then
+    echo 'Usage: getMembers <device>' 1>&2
+    return 1
+  fi
+  wapi get "$1" 'member:dns?_return_fields=host_name,enable_dns'
+}
+
+#
+# getMembers <device> <host>
+#
+getMembersByName () {
+  if [ $# -lt 2 ]; then
+    echo 'Usage: getMembersByName <device> <host>' 1>&2
+    return 1
+  fi
+  wapi get "$1" 'member:dns?host_name='"$2"'&_return_fields=enable_dns'
+}
+
+#
+# ctrlDNS <device> <ref> <start | stop | restart>
+#
+ctrlDNSbyRef () {
+  local _json
+
+  if [ $# -lt 3 ]; then
+    echo 'Usage: ctrlDNSbyRef <device> <ref> <start | stop>' 1>&2
+    return 1
+  fi
+  case "$3" in
+    'start') _json='{"enable_dns": true}'
+             ;;
+    'stop') _json='{"enable_dns": false}'
+            ;;
+    *) echo "ctrlDNSbyRef: ERROR: wrong command: $3" 1>&2
+       return 1
+       ;;
+  esac
+  wapi put "$1" ${2} -d $_json
+}
+
+#
+# ctrlDNS <device> <host | ref> <start | stop | restart>
+#
+ctrlDNS () {
+  local _refs
+  local _ref
+  local _sec
+
+  if [ $# -lt 3 ]; then
+    echo 'Usage: ctrlDNS <device> <host | ref> <start | stop | restart>' 1>&2
+    return 1
+  fi
+  if echo $2 | grep '^member:dns' > /dev/null ; then
+    _refs="$2"
+  else
+    for _ref in `getMembersByName "$1" "$2" | jq '.[]._ref'`
+    do
+      # strip the first and last characters (") in $_ref
+      if [ -z "$_refs" ]; then
+        _refs="${_ref#?}"
+      else
+        _refs="$_refs ${_ref#?}"
+      fi
+    done
+  fi
+  if [ $3 = "restart" ]; then
+    for _ref in $_refs
+    do
+      ctrlDNSbyRef "$1" "$_ref" stop
+      echo 1>&2
+      _sec=0
+      while [ $_sec -lt 30 ];
+      do
+        /bin/echo -n '.' 1>&2
+        sleep 1
+       _sec=`expr $_sec + 1`
+      done
+      echo 1>&2
+      ctrlDNSbyRef "$1" "$_ref" start
+    done
+  else
+    for _ref in $_refs
+    do
+      ctrlDNSbyRef "$1" "$_ref" $3
+    done
+  fi
+}
